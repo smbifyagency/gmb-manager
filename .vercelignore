@@ -1,0 +1,2 @@
+# Ignore prisma seed file (only for local dev)
+prisma/seed.ts

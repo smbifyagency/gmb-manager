@@ -1,0 +1,502 @@
+// Local SEO Task Automation Hub - Database Schema
+// This is your Prisma schema file
+// Designed for managing SOP-driven workflows for local SEO agencies
+// WITH MULTI-ROLE & MULTI-TENANT ISOLATION
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// ============= TEAM (WORKSPACE) MANAGEMENT =============
+
+model Team {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique  // URL-friendly identifier
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relationships
+  members      TeamMember[]
+  clients      Client[]
+  sopTemplates SOPTemplate[]
+  settings     TeamSettings?
+  serviceTypes ServiceType[]
+}
+
+model TeamMember {
+  id        String     @id @default(cuid())
+  teamId    String
+  userId    String
+  role      TeamRole   @default(MEMBER)
+  createdAt DateTime   @default(now())
+
+  team      Team       @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, userId])
+}
+
+enum TeamRole {
+  OWNER    // Full team control (Agency Owner)
+  ADMIN    // Can manage members, clients (SEO Lead)
+  MEMBER   // Can work on assigned tasks (Junior SEO, VA)
+}
+
+model TeamSettings {
+  id                    String   @id @default(cuid())
+  teamId                String   @unique
+  slackWebhookUrl       String?
+  slackEnabled          Boolean  @default(false)
+  emailEnabled          Boolean  @default(true)
+  reminderIntervalHours Int      @default(24)
+  escalationAfterDays   Int      @default(3)
+  timezone              String   @default("America/New_York")
+  updatedAt             DateTime @updatedAt
+
+  team                  Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+}
+
+// ============= USER MANAGEMENT =============
+
+model User {
+  id            String       @id @default(cuid())
+  email         String       @unique
+  passwordHash  String
+  name          String
+  systemRole    SystemRole   @default(USER)  // Global system role
+  avatarUrl     String?
+  
+  // User-level permission overrides
+  customPermissions    String   @default("[]")  // JSON array of Permission strings
+  useCustomPermissions Boolean  @default(false) // If true, use custom instead of role defaults
+  
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  // Relationships
+  teamMemberships   TeamMember[]
+  clientAssignments ClientUser[]
+  assignedTasks     TaskInstance[]
+  notifications     Notification[]
+  createdSOPs       SOPTemplate[]     @relation("CreatedBy")
+}
+
+enum SystemRole {
+  SUPER_ADMIN  // Platform-wide access (SaaS owner)
+  USER         // Normal user (role determined per-team)
+  CLIENT       // External client user (Business Owner)
+}
+
+// Legacy role enum - kept for migration compatibility
+enum UserRole {
+  AGENCY_OWNER
+  SEO_LEAD
+  JUNIOR_SEO
+  VA
+  BUSINESS_OWNER
+}
+
+// ============= CLIENT & LOCATION MANAGEMENT =============
+
+model Client {
+  id           String       @id @default(cuid())
+  teamId       String       // Required team association
+  name         String
+  businessType BusinessType
+  notes        String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  // Relationships
+  team          Team         @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  locations     Location[]
+  assignedUsers ClientUser[]
+  reports       Report[]
+  invoices      Invoice[]
+
+  @@unique([name, teamId])  // Names unique within team
+}
+
+enum BusinessType {
+  RANK_RENT        // SEO-owned lead gen sites
+  TRADITIONAL      // Website + GBP
+  GMB_ONLY         // Google Maps presence only
+}
+
+model ClientUser {
+  id        String   @id @default(cuid())
+  clientId  String
+  userId    String
+  role      String   @default("assigned") // assigned, manager, owner
+  createdAt DateTime @default(now())
+
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([clientId, userId])
+}
+
+model Location {
+  id           String         @id @default(cuid())
+  clientId     String
+  name         String         // Business name
+  address      String?
+  city         String?
+  state        String?
+  zipCode      String?
+  phone        String?
+  hasWebsite   Boolean        @default(false)
+  websiteUrl   String?
+  gbpUrl       String?        // Google Business Profile URL
+  gbpStatus    GBPStatus      @default(NOT_CLAIMED)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  // Relationships
+  client             Client             @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  workflowInstances  WorkflowInstance[]
+  reports            Report[]
+
+  @@unique([name, clientId])
+}
+
+enum GBPStatus {
+  NOT_CLAIMED
+  PENDING_VERIFICATION
+  VERIFIED
+  SUSPENDED
+  REINSTATED
+}
+
+// ============= SOP TEMPLATE SYSTEM =============
+
+model SOPTemplate {
+  id                     String               @id @default(cuid())
+  teamId                 String?              // null = global template (available to all teams)
+  name                   String
+  description            String?
+  type                   SOPType
+  applicableBusinessTypes String              // JSON array: ["RANK_RENT", "TRADITIONAL", "GMB_ONLY"]
+  isActive               Boolean              @default(true)
+  isGlobal               Boolean              @default(false)  // Global templates available to all
+  createdById            String?
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime             @updatedAt
+
+  // Relationships
+  team              Team?              @relation(fields: [teamId], references: [id])
+  createdBy         User?              @relation("CreatedBy", fields: [createdById], references: [id])
+  taskTemplates     TaskTemplate[]
+  workflowInstances WorkflowInstance[]
+}
+
+enum SOPType {
+  NEW_LOCATION
+  SUSPENSION_RECOVERY
+  REBRAND
+  MAINTENANCE
+}
+
+model TaskTemplate {
+  id                     String        @id @default(cuid())
+  sopTemplateId          String
+  title                  String
+  instructions           String        // Non-technical, step-by-step guide
+  category               TaskCategory
+  evidenceType           EvidenceType
+  estimatedMinutes       Int           @default(15)
+  isRequired             Boolean       @default(true)
+  requiresOwnerApproval  Boolean       @default(false)
+  applicableBusinessTypes String       // JSON array
+  order                  Int           @default(0)
+  dependsOnTaskIds       String        @default("[]") // JSON array of task template IDs
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+
+  // Relationships
+  sopTemplate    SOPTemplate    @relation(fields: [sopTemplateId], references: [id], onDelete: Cascade)
+  taskInstances  TaskInstance[]
+}
+
+enum TaskCategory {
+  GBP_SETUP
+  GBP_OPTIMIZATION
+  WEBSITE
+  CITATIONS
+  REVIEWS
+  TRACKING
+  CONTENT
+  VERIFICATION
+  DOCUMENTATION
+}
+
+enum EvidenceType {
+  NONE
+  URL
+  SCREENSHOT
+  TEXT
+  FILE
+  CHECKLIST
+}
+
+// ============= WORKFLOW EXECUTION =============
+
+model WorkflowInstance {
+  id              String           @id @default(cuid())
+  locationId      String
+  sopTemplateId   String
+  status          WorkflowStatus   @default(IN_PROGRESS)
+  priority        Priority         @default(MEDIUM)
+  startedAt       DateTime         @default(now())
+  dueDate         DateTime?
+  completedAt     DateTime?
+  notes           String?
+
+  // Relationships
+  location       Location        @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  sopTemplate    SOPTemplate     @relation(fields: [sopTemplateId], references: [id])
+  taskInstances  TaskInstance[]
+}
+
+enum WorkflowStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  BLOCKED
+  COMPLETED
+  CANCELLED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+model TaskInstance {
+  id                 String        @id @default(cuid())
+  workflowInstanceId String
+  taskTemplateId     String
+  assignedToId       String?
+  status             TaskStatus    @default(PENDING)
+  evidence           String?       // URL, text, or file path
+  evidenceNotes      String?
+  startedAt          DateTime?
+  completedAt        DateTime?
+  dueDate            DateTime?
+  reminderCount      Int           @default(0)
+  lastReminderAt     DateTime?
+
+  // Relationships
+  workflowInstance  WorkflowInstance  @relation(fields: [workflowInstanceId], references: [id], onDelete: Cascade)
+  taskTemplate      TaskTemplate      @relation(fields: [taskTemplateId], references: [id])
+  assignedTo        User?             @relation(fields: [assignedToId], references: [id])
+  notifications     Notification[]
+}
+
+enum TaskStatus {
+  PENDING
+  BLOCKED
+  IN_PROGRESS
+  AWAITING_APPROVAL
+  COMPLETED
+  SKIPPED
+}
+
+// ============= NOTIFICATION SYSTEM =============
+
+model Notification {
+  id             String            @id @default(cuid())
+  userId         String
+  taskInstanceId String?
+  type           NotificationType
+  channel        NotificationChannel
+  title          String
+  message        String
+  actionUrl      String?
+  isRead         Boolean           @default(false)
+  isDeleted      Boolean           @default(false)  // Soft delete for notifications
+  sentAt         DateTime          @default(now())
+  readAt         DateTime?
+
+  // Relationships
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  taskInstance  TaskInstance? @relation(fields: [taskInstanceId], references: [id], onDelete: SetNull)
+}
+
+enum NotificationType {
+  TASK_ASSIGNED
+  TASK_DUE_SOON
+  TASK_OVERDUE
+  TASK_BLOCKED
+  APPROVAL_REQUIRED
+  WORKFLOW_COMPLETED
+  ESCALATION
+  SYSTEM
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  SLACK
+}
+
+// ============= DEPRECATED - Use TeamSettings =============
+// Kept for migration compatibility
+
+model Settings {
+  id                    String   @id @default(cuid())
+  slackWebhookUrl       String?
+  slackEnabled          Boolean  @default(false)
+  emailEnabled          Boolean  @default(true)
+  reminderIntervalHours Int      @default(24)
+  escalationAfterDays   Int      @default(3)
+  updatedAt             DateTime @updatedAt
+}
+
+// ============= REPORTS & ANALYTICS =============
+
+model Report {
+  id            String       @id @default(cuid())
+  clientId      String
+  locationId    String?      // Optional - report for specific location
+  type          ReportType
+  period        String       // "2024-03" for monthly, "2024-W12" for weekly
+  status        ReportStatus @default(GENERATING)
+  dataJson      String       // JSON blob with all metrics
+  pdfUrl        String?      // Generated PDF path
+  createdAt     DateTime     @default(now())
+  
+  // Relationships
+  client        Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  location      Location?    @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  
+  @@unique([clientId, type, period])
+  @@index([clientId])
+  @@index([status])
+}
+
+enum ReportType {
+  MONTHLY_SEO
+  WEEKLY_SUMMARY
+  GBP_PERFORMANCE
+  CITATION_AUDIT
+  RANKING_SNAPSHOT
+  WORKFLOW_COMPLETION
+}
+
+enum ReportStatus {
+  GENERATING
+  READY
+  FAILED
+}
+
+// ============= INVOICES & BILLING =============
+
+model Invoice {
+  id            String        @id @default(cuid())
+  clientId      String
+  invoiceNumber String        @unique  // INV-2024-001
+  status        InvoiceStatus @default(DRAFT)
+  subtotal      Float
+  taxRate       Float         @default(0)
+  taxAmount     Float         @default(0)
+  total         Float
+  currency      String        @default("USD")
+  issueDate     DateTime      @default(now())
+  dueDate       DateTime
+  paidAt        DateTime?
+  paidAmount    Float?
+  paymentMethod String?
+  notes         String?
+  
+  // Relationships
+  client        Client            @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  lineItems     InvoiceLineItem[]
+  payments      Payment[]
+  
+  @@index([clientId])
+  @@index([status])
+  @@index([dueDate])
+}
+
+model InvoiceLineItem {
+  id          String   @id @default(cuid())
+  invoiceId   String
+  description String
+  quantity    Float    @default(1)
+  unitPrice   Float
+  total       Float
+  serviceId   String?  // Optional link to ServiceType
+  
+  // Relationships
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+}
+
+model Payment {
+  id            String        @id @default(cuid())
+  invoiceId     String
+  amount        Float
+  method        PaymentMethod
+  transactionId String?       // Stripe/PayPal transaction ID
+  status        PaymentStatus @default(PENDING)
+  paidAt        DateTime?
+  notes         String?
+  createdAt     DateTime      @default(now())
+  
+  // Relationships
+  invoice       Invoice       @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  
+  @@index([invoiceId])
+  @@index([status])
+}
+
+model ServiceType {
+  id          String   @id @default(cuid())
+  teamId      String
+  name        String   // "Monthly SEO", "Setup Fee", etc.
+  description String?
+  price       Float
+  isRecurring Boolean  @default(false)
+  interval    String?  // "monthly", "quarterly", "yearly"
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relationships
+  team        Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  
+  @@unique([teamId, name])
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  VIEWED
+  PAID
+  PARTIAL
+  OVERDUE
+  CANCELLED
+}
+
+enum PaymentMethod {
+  STRIPE
+  PAYPAL
+  BANK_TRANSFER
+  CASH
+  CHECK
+  OTHER
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}

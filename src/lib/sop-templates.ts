@@ -1,7 +1,11 @@
 // Local SEO SOP Templates
 // Pre-defined workflows for common local SEO scenarios
 
-import { SOPType, TaskCategory, EvidenceType, BusinessType } from '@prisma/client'
+// Define types locally (matches Prisma enums) - avoid importing from @prisma/client
+type SOPType = 'NEW_LOCATION' | 'SUSPENSION_RECOVERY' | 'REBRAND' | 'MAINTENANCE'
+type TaskCategory = 'GBP_SETUP' | 'GBP_OPTIMIZATION' | 'WEBSITE' | 'CITATIONS' | 'REVIEWS' | 'TRACKING' | 'CONTENT' | 'VERIFICATION' | 'DOCUMENTATION'
+type EvidenceType = 'NONE' | 'URL' | 'SCREENSHOT' | 'TEXT' | 'FILE' | 'CHECKLIST'
+type BusinessType = 'TRADITIONAL' | 'RANK_RENT' | 'GMB_ONLY'
 
 export interface TaskTemplateData {
     title: string

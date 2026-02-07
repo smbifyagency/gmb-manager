@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import { allSOPTemplates, filterTasksForBusinessType } from '@/lib/sop-templates'
-import { BusinessType, SOPType } from '@prisma/client'
+
+// Define SOP types as string literals (matches Prisma enum)
+type SOPType = 'NEW_LOCATION' | 'SUSPENSION_RECOVERY' | 'REBRAND' | 'MAINTENANCE'
+type BusinessType = 'TRADITIONAL' | 'RANK_RENT' | 'GMB_ONLY'
 
 // POST /api/workflows - Create a new workflow instance
 export async function POST(request: NextRequest) {

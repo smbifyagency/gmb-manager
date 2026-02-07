@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import type { Payment } from '@prisma/client'
+import { Prisma } from '@prisma/client'
+
+// Type-safe invoice with payments using Prisma's built-in payload typing
+type InvoiceWithPayments = Prisma.InvoiceGetPayload<{
+    include: { payments: true }
+}>
 
 interface RouteParams {
     params: Promise<{ id: string }>
@@ -30,8 +35,8 @@ export async function POST(
             )
         }
 
-        // Get invoice
-        const invoice = await prisma.invoice.findUnique({
+        // Get invoice with payments
+        const invoice: InvoiceWithPayments | null = await prisma.invoice.findUnique({
             where: { id },
             include: { payments: true }
         })
@@ -51,8 +56,8 @@ export async function POST(
             )
         }
 
-        // Calculate total paid so far
-        const totalPaid = invoice.payments.reduce((sum: number, p: Payment) => {
+        // Calculate total paid so far (fully typed via InvoiceWithPayments)
+        const totalPaid = invoice.payments.reduce((sum, p) => {
             return p.status === 'COMPLETED' ? sum + p.amount : sum
         }, 0)
 

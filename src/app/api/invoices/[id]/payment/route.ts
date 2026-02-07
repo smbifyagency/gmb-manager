@@ -51,7 +51,7 @@ export async function POST(
         }
 
         // Calculate total paid so far
-        const totalPaid = invoice.payments.reduce((sum, p) => {
+        const totalPaid = invoice.payments.reduce((sum: number, p) => {
             return p.status === 'COMPLETED' ? sum + p.amount : sum
         }, 0)
 

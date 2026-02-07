@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import type { Payment } from '@prisma/client'
 
 interface RouteParams {
     params: Promise<{ id: string }>
@@ -51,7 +52,7 @@ export async function POST(
         }
 
         // Calculate total paid so far
-        const totalPaid = invoice.payments.reduce((sum: number, p) => {
+        const totalPaid = invoice.payments.reduce((sum: number, p: Payment) => {
             return p.status === 'COMPLETED' ? sum + p.amount : sum
         }, 0)
 

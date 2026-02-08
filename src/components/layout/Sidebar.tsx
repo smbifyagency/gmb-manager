@@ -37,13 +37,6 @@ const fullNavigation: NavSection[] = [
         ]
     },
     {
-        section: 'Reports & Billing',
-        items: [
-            { name: 'Reports', href: '/reports', icon: '📈', permission: PERMISSIONS.REPORT_VIEW },
-            { name: 'Invoices', href: '/invoices', icon: '💰', permission: PERMISSIONS.INVOICE_VIEW },
-        ]
-    },
-    {
         section: 'Configuration',
         items: [
             { name: 'SOP Templates', href: '/sops', icon: '📋', permission: PERMISSIONS.SOP_VIEW },

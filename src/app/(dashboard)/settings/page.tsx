@@ -12,13 +12,6 @@ interface NotificationSetting {
     push: boolean
 }
 
-interface IntegrationSetting {
-    id: string
-    name: string
-    description: string
-    connected: boolean
-    icon: string
-}
 
 // Settings sections
 const notificationSettings: NotificationSetting[] = [
@@ -59,41 +52,11 @@ const notificationSettings: NotificationSetting[] = [
     }
 ]
 
-const integrations: IntegrationSetting[] = [
-    {
-        id: 'google-business',
-        name: 'Google Business Profile',
-        description: 'Connect your Google Business Profile for automated updates',
-        connected: true,
-        icon: '🔗'
-    },
-    {
-        id: 'slack',
-        name: 'Slack',
-        description: 'Send notifications to Slack channels',
-        connected: false,
-        icon: '💬'
-    },
-    {
-        id: 'zapier',
-        name: 'Zapier',
-        description: 'Connect with 5000+ apps via Zapier',
-        connected: false,
-        icon: '⚡'
-    },
-    {
-        id: 'google-analytics',
-        name: 'Google Analytics',
-        description: 'Track performance metrics',
-        connected: true,
-        icon: '📊'
-    }
-]
+
 
 export default function SettingsPage() {
-    const [activeTab, setActiveTab] = useState<'general' | 'notifications' | 'integrations'>('general')
+    const [activeTab, setActiveTab] = useState<'general' | 'notifications'>('general')
     const [notifications, setNotifications] = useState(notificationSettings)
-    const [integrationList, setIntegrationList] = useState(integrations)
     const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
     // General settings state
@@ -108,16 +71,6 @@ export default function SettingsPage() {
         ))
     }
 
-    const toggleIntegration = (id: string) => {
-        setIntegrationList(prev => prev.map(i =>
-            i.id === id ? { ...i, connected: !i.connected } : i
-        ))
-        const integration = integrationList.find(i => i.id === id)
-        if (integration) {
-            setSuccessMessage(`${integration.connected ? 'Disconnected from' : 'Connected to'} ${integration.name}`)
-            setTimeout(() => setSuccessMessage(null), 3000)
-        }
-    }
 
     const handleSaveSettings = () => {
         setSuccessMessage('✅ Settings saved successfully!')
@@ -126,15 +79,14 @@ export default function SettingsPage() {
 
     const tabs = [
         { id: 'general', label: 'General', icon: '⚙️' },
-        { id: 'notifications', label: 'Notifications', icon: '🔔' },
-        { id: 'integrations', label: 'Integrations', icon: '🔗' }
+        { id: 'notifications', label: 'Notifications', icon: '🔔' }
     ]
 
     return (
         <>
             <Header
                 title="Settings"
-                subtitle="Configure your agency's preferences and integrations"
+                subtitle="Configure your agency's preferences"
             />
 
             <div className="page-content">
@@ -367,54 +319,6 @@ export default function SettingsPage() {
                                 <button className="btn btn-primary" onClick={handleSaveSettings} style={{ marginTop: 'var(--spacing-4)' }}>
                                     💾 Save Preferences
                                 </button>
-                            </div>
-                        )}
-
-                        {/* Integrations */}
-                        {activeTab === 'integrations' && (
-                            <div>
-                                <h3 style={{
-                                    fontSize: 'var(--font-size-lg)',
-                                    fontWeight: 'var(--font-weight-semibold)',
-                                    marginBottom: 'var(--spacing-6)'
-                                }}>
-                                    Integrations
-                                </h3>
-
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-4)' }}>
-                                    {integrationList.map(integration => (
-                                        <div
-                                            key={integration.id}
-                                            style={{
-                                                display: 'flex',
-                                                justifyContent: 'space-between',
-                                                alignItems: 'center',
-                                                padding: 'var(--spacing-4)',
-                                                background: 'var(--color-bg-tertiary)',
-                                                borderRadius: 'var(--radius-lg)',
-                                                border: `1px solid ${integration.connected ? 'var(--color-success)' : 'var(--color-border)'}`
-                                            }}
-                                        >
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-4)' }}>
-                                                <span style={{ fontSize: '28px' }}>{integration.icon}</span>
-                                                <div>
-                                                    <div style={{ fontWeight: 'var(--font-weight-medium)', marginBottom: 'var(--spacing-1)' }}>
-                                                        {integration.name}
-                                                    </div>
-                                                    <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)' }}>
-                                                        {integration.description}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <button
-                                                className={`btn ${integration.connected ? 'btn-secondary' : 'btn-primary'}`}
-                                                onClick={() => toggleIntegration(integration.id)}
-                                            >
-                                                {integration.connected ? 'Disconnect' : 'Connect'}
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
                             </div>
                         )}
 

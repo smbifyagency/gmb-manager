@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Header from '@/components/layout/Header'
@@ -10,7 +10,7 @@ interface Task {
     id: string
     name: string
     description: string
-    status: 'pending' | 'in_progress' | 'completed' | 'blocked'
+    status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'BLOCKED' | 'SKIPPED'
     assignee: string | null
     dueDate: string | null
     priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
@@ -25,17 +25,18 @@ interface Workflow {
     location: string
     client: string
     businessType: string
-    status: string
+    status: 'NOT_STARTED' | 'IN_PROGRESS' | 'PAUSED' | 'COMPLETED'
     priority: string
     progress: number
     completedTasks: number
     totalTasks: number
-    startedAt: string
-    dueDate: string
+    startedAt: string | null
+    dueDate: string | null
+    completedAt: string | null
     tasks: Task[]
 }
 
-// Mock workflow data
+// Mock workflow data (until API is fully integrated)
 const mockWorkflows: Record<string, Workflow> = {
     '1': {
         id: '1',
@@ -44,26 +45,27 @@ const mockWorkflows: Record<string, Workflow> = {
         location: 'Tampa Bay Plumbers',
         client: 'Rank & Rent Portfolio',
         businessType: 'RANK_RENT',
-        status: 'in_progress',
+        status: 'IN_PROGRESS',
         priority: 'HIGH',
         progress: 75,
         completedTasks: 9,
         totalTasks: 12,
         startedAt: '2024-03-10',
         dueDate: '2024-03-25',
+        completedAt: null,
         tasks: [
-            { id: 't1', name: 'Create GBP Listing', description: 'Set up the Google Business Profile', status: 'completed', assignee: 'John', dueDate: '2024-03-12', priority: 'HIGH', evidence: null, order: 1 },
-            { id: 't2', name: 'Add Photos (5 minimum)', description: 'Upload at least 5 high-quality photos', status: 'completed', assignee: 'John', dueDate: '2024-03-13', priority: 'HIGH', evidence: null, order: 2 },
-            { id: 't3', name: 'Write Business Description', description: 'Create SEO-optimized description', status: 'completed', assignee: 'Sarah', dueDate: '2024-03-14', priority: 'MEDIUM', evidence: null, order: 3 },
-            { id: 't4', name: 'Set Categories', description: 'Select primary and secondary categories', status: 'completed', assignee: 'John', dueDate: '2024-03-14', priority: 'HIGH', evidence: null, order: 4 },
-            { id: 't5', name: 'Add Services', description: 'List all services offered', status: 'completed', assignee: 'Sarah', dueDate: '2024-03-15', priority: 'MEDIUM', evidence: null, order: 5 },
-            { id: 't6', name: 'Set Hours', description: 'Configure business hours', status: 'completed', assignee: 'John', dueDate: '2024-03-15', priority: 'MEDIUM', evidence: null, order: 6 },
-            { id: 't7', name: 'Add Phone Number', description: 'Add tracking phone number', status: 'completed', assignee: 'John', dueDate: '2024-03-16', priority: 'HIGH', evidence: null, order: 7 },
-            { id: 't8', name: 'Link Website', description: 'Connect website URL', status: 'completed', assignee: 'John', dueDate: '2024-03-16', priority: 'MEDIUM', evidence: null, order: 8 },
-            { id: 't9', name: 'Verify Listing', description: 'Complete verification process', status: 'completed', assignee: 'John', dueDate: '2024-03-18', priority: 'CRITICAL', evidence: null, order: 9 },
-            { id: 't10', name: 'Create First Post', description: 'Publish first GBP post', status: 'in_progress', assignee: 'Sarah', dueDate: '2024-03-20', priority: 'MEDIUM', evidence: null, order: 10 },
-            { id: 't11', name: 'Set Up Q&A', description: 'Pre-populate Q&A section', status: 'pending', assignee: null, dueDate: '2024-03-22', priority: 'LOW', evidence: null, order: 11 },
-            { id: 't12', name: 'Request First Review', description: 'Reach out for first review', status: 'pending', assignee: null, dueDate: '2024-03-25', priority: 'MEDIUM', evidence: null, order: 12 },
+            { id: 't1', name: 'Create GBP Listing', description: 'Set up the Google Business Profile', status: 'COMPLETED', assignee: 'John', dueDate: '2024-03-12', priority: 'HIGH', evidence: null, order: 1 },
+            { id: 't2', name: 'Add Photos (5 minimum)', description: 'Upload at least 5 high-quality photos', status: 'COMPLETED', assignee: 'John', dueDate: '2024-03-13', priority: 'HIGH', evidence: null, order: 2 },
+            { id: 't3', name: 'Write Business Description', description: 'Create SEO-optimized description', status: 'COMPLETED', assignee: 'Sarah', dueDate: '2024-03-14', priority: 'MEDIUM', evidence: null, order: 3 },
+            { id: 't4', name: 'Set Categories', description: 'Select primary and secondary categories', status: 'COMPLETED', assignee: 'John', dueDate: '2024-03-14', priority: 'HIGH', evidence: null, order: 4 },
+            { id: 't5', name: 'Add Services', description: 'List all services offered', status: 'COMPLETED', assignee: 'Sarah', dueDate: '2024-03-15', priority: 'MEDIUM', evidence: null, order: 5 },
+            { id: 't6', name: 'Set Hours', description: 'Configure business hours', status: 'COMPLETED', assignee: 'John', dueDate: '2024-03-15', priority: 'MEDIUM', evidence: null, order: 6 },
+            { id: 't7', name: 'Add Phone Number', description: 'Add tracking phone number', status: 'COMPLETED', assignee: 'John', dueDate: '2024-03-16', priority: 'HIGH', evidence: null, order: 7 },
+            { id: 't8', name: 'Link Website', description: 'Connect website URL', status: 'COMPLETED', assignee: 'John', dueDate: '2024-03-16', priority: 'MEDIUM', evidence: null, order: 8 },
+            { id: 't9', name: 'Verify Listing', description: 'Complete verification process', status: 'COMPLETED', assignee: 'John', dueDate: '2024-03-18', priority: 'CRITICAL', evidence: null, order: 9 },
+            { id: 't10', name: 'Create First Post', description: 'Publish first GBP post', status: 'IN_PROGRESS', assignee: 'Sarah', dueDate: '2024-03-20', priority: 'MEDIUM', evidence: null, order: 10 },
+            { id: 't11', name: 'Set Up Q&A', description: 'Pre-populate Q&A section', status: 'PENDING', assignee: null, dueDate: '2024-03-22', priority: 'LOW', evidence: null, order: 11 },
+            { id: 't12', name: 'Request First Review', description: 'Reach out for first review', status: 'PENDING', assignee: null, dueDate: '2024-03-25', priority: 'MEDIUM', evidence: null, order: 12 },
         ]
     },
     '2': {
@@ -73,22 +75,23 @@ const mockWorkflows: Record<string, Workflow> = {
         location: 'Miami Roofing Masters',
         client: 'Rank & Rent Portfolio',
         businessType: 'RANK_RENT',
-        status: 'blocked',
+        status: 'IN_PROGRESS',
         priority: 'CRITICAL',
         progress: 25,
         completedTasks: 2,
         totalTasks: 8,
         startedAt: '2024-03-15',
         dueDate: '2024-03-20',
+        completedAt: null,
         tasks: [
-            { id: 't1', name: 'Document Suspension Notice', description: 'Screenshot and document the suspension', status: 'completed', assignee: 'John', dueDate: '2024-03-15', priority: 'CRITICAL', evidence: null, order: 1 },
-            { id: 't2', name: 'Identify Violation Cause', description: 'Analyze what triggered suspension', status: 'completed', assignee: 'Sarah', dueDate: '2024-03-16', priority: 'CRITICAL', evidence: null, order: 2 },
-            { id: 't3', name: 'Prepare Appeal Documents', description: 'Gather proof of legitimacy', status: 'blocked', assignee: 'John', dueDate: '2024-03-17', priority: 'CRITICAL', evidence: null, order: 3 },
-            { id: 't4', name: 'Submit Reinstatement Request', description: 'File appeal with Google', status: 'pending', assignee: null, dueDate: '2024-03-18', priority: 'CRITICAL', evidence: null, order: 4 },
-            { id: 't5', name: 'Follow Up on Appeal', description: 'Check status after 3 days', status: 'pending', assignee: null, dueDate: '2024-03-19', priority: 'HIGH', evidence: null, order: 5 },
-            { id: 't6', name: 'Video Verification (if needed)', description: 'Complete video call if requested', status: 'pending', assignee: null, dueDate: '2024-03-19', priority: 'HIGH', evidence: null, order: 6 },
-            { id: 't7', name: 'Confirm Reinstatement', description: 'Verify listing is active again', status: 'pending', assignee: null, dueDate: '2024-03-20', priority: 'CRITICAL', evidence: null, order: 7 },
-            { id: 't8', name: 'Post-Recovery Audit', description: 'Review and prevent future issues', status: 'pending', assignee: null, dueDate: '2024-03-20', priority: 'MEDIUM', evidence: null, order: 8 },
+            { id: 't1', name: 'Document Suspension Notice', description: 'Screenshot and document the suspension', status: 'COMPLETED', assignee: 'John', dueDate: '2024-03-15', priority: 'CRITICAL', evidence: null, order: 1 },
+            { id: 't2', name: 'Identify Violation Cause', description: 'Analyze what triggered suspension', status: 'COMPLETED', assignee: 'Sarah', dueDate: '2024-03-16', priority: 'CRITICAL', evidence: null, order: 2 },
+            { id: 't3', name: 'Prepare Appeal Documents', description: 'Gather proof of legitimacy', status: 'BLOCKED', assignee: 'John', dueDate: '2024-03-17', priority: 'CRITICAL', evidence: null, order: 3 },
+            { id: 't4', name: 'Submit Reinstatement Request', description: 'File appeal with Google', status: 'PENDING', assignee: null, dueDate: '2024-03-18', priority: 'CRITICAL', evidence: null, order: 4 },
+            { id: 't5', name: 'Follow Up on Appeal', description: 'Check status after 3 days', status: 'PENDING', assignee: null, dueDate: '2024-03-19', priority: 'HIGH', evidence: null, order: 5 },
+            { id: 't6', name: 'Video Verification (if needed)', description: 'Complete video call if requested', status: 'PENDING', assignee: null, dueDate: '2024-03-19', priority: 'HIGH', evidence: null, order: 6 },
+            { id: 't7', name: 'Confirm Reinstatement', description: 'Verify listing is active again', status: 'PENDING', assignee: null, dueDate: '2024-03-20', priority: 'CRITICAL', evidence: null, order: 7 },
+            { id: 't8', name: 'Post-Recovery Audit', description: 'Review and prevent future issues', status: 'PENDING', assignee: null, dueDate: '2024-03-20', priority: 'MEDIUM', evidence: null, order: 8 },
         ]
     },
     '3': {
@@ -98,22 +101,23 @@ const mockWorkflows: Record<string, Workflow> = {
         location: "Joe's Pizza Downtown",
         client: "Joe's Restaurants",
         businessType: 'TRADITIONAL',
-        status: 'in_progress',
+        status: 'NOT_STARTED',
         priority: 'MEDIUM',
-        progress: 50,
-        completedTasks: 4,
+        progress: 0,
+        completedTasks: 0,
         totalTasks: 8,
-        startedAt: '2024-03-01',
+        startedAt: null,
         dueDate: '2024-03-31',
+        completedAt: null,
         tasks: [
-            { id: 't1', name: 'Review GBP Insights', description: 'Check performance metrics', status: 'completed', assignee: 'Sarah', dueDate: '2024-03-05', priority: 'MEDIUM', evidence: null, order: 1 },
-            { id: 't2', name: 'Update Photos', description: 'Add new seasonal photos', status: 'completed', assignee: 'Sarah', dueDate: '2024-03-10', priority: 'MEDIUM', evidence: null, order: 2 },
-            { id: 't3', name: 'Respond to Reviews', description: 'Reply to all new reviews', status: 'completed', assignee: 'John', dueDate: '2024-03-15', priority: 'HIGH', evidence: null, order: 3 },
-            { id: 't4', name: 'Create Monthly Post', description: 'Publish promotional post', status: 'completed', assignee: 'Sarah', dueDate: '2024-03-15', priority: 'MEDIUM', evidence: null, order: 4 },
-            { id: 't5', name: 'Update Q&A', description: 'Add new Q&A if needed', status: 'in_progress', assignee: 'Sarah', dueDate: '2024-03-20', priority: 'LOW', evidence: null, order: 5 },
-            { id: 't6', name: 'Check NAP Consistency', description: 'Verify name/address/phone', status: 'pending', assignee: null, dueDate: '2024-03-25', priority: 'LOW', evidence: null, order: 6 },
-            { id: 't7', name: 'Update Services/Menu', description: 'Refresh any stale info', status: 'pending', assignee: null, dueDate: '2024-03-28', priority: 'LOW', evidence: null, order: 7 },
-            { id: 't8', name: 'Generate Monthly Report', description: 'Create client report', status: 'pending', assignee: null, dueDate: '2024-03-31', priority: 'MEDIUM', evidence: null, order: 8 },
+            { id: 't1', name: 'Review GBP Insights', description: 'Check performance metrics', status: 'PENDING', assignee: null, dueDate: '2024-03-05', priority: 'MEDIUM', evidence: null, order: 1 },
+            { id: 't2', name: 'Update Photos', description: 'Add new seasonal photos', status: 'PENDING', assignee: null, dueDate: '2024-03-10', priority: 'MEDIUM', evidence: null, order: 2 },
+            { id: 't3', name: 'Respond to Reviews', description: 'Reply to all new reviews', status: 'PENDING', assignee: null, dueDate: '2024-03-15', priority: 'HIGH', evidence: null, order: 3 },
+            { id: 't4', name: 'Create Monthly Post', description: 'Publish promotional post', status: 'PENDING', assignee: null, dueDate: '2024-03-15', priority: 'MEDIUM', evidence: null, order: 4 },
+            { id: 't5', name: 'Update Q&A', description: 'Add new Q&A if needed', status: 'PENDING', assignee: null, dueDate: '2024-03-20', priority: 'LOW', evidence: null, order: 5 },
+            { id: 't6', name: 'Check NAP Consistency', description: 'Verify name/address/phone', status: 'PENDING', assignee: null, dueDate: '2024-03-25', priority: 'LOW', evidence: null, order: 6 },
+            { id: 't7', name: 'Update Services/Menu', description: 'Refresh any stale info', status: 'PENDING', assignee: null, dueDate: '2024-03-28', priority: 'LOW', evidence: null, order: 7 },
+            { id: 't8', name: 'Generate Monthly Report', description: 'Create client report', status: 'PENDING', assignee: null, dueDate: '2024-03-31', priority: 'MEDIUM', evidence: null, order: 8 },
         ]
     },
     '4': {
@@ -123,24 +127,25 @@ const mockWorkflows: Record<string, Workflow> = {
         location: 'Sunrise Dental',
         client: 'Sunrise Dental LLC',
         businessType: 'GMB_ONLY',
-        status: 'in_progress',
+        status: 'COMPLETED',
         priority: 'MEDIUM',
-        progress: 90,
-        completedTasks: 9,
+        progress: 100,
+        completedTasks: 10,
         totalTasks: 10,
         startedAt: '2024-03-05',
         dueDate: '2024-03-20',
+        completedAt: '2024-03-19',
         tasks: [
-            { id: 't1', name: 'Update Business Name', description: 'Change to new brand name', status: 'completed', assignee: 'John', dueDate: '2024-03-06', priority: 'CRITICAL', evidence: null, order: 1 },
-            { id: 't2', name: 'Upload New Logo', description: 'Replace logo in GBP', status: 'completed', assignee: 'John', dueDate: '2024-03-07', priority: 'HIGH', evidence: null, order: 2 },
-            { id: 't3', name: 'Update Cover Photo', description: 'New branded cover image', status: 'completed', assignee: 'Sarah', dueDate: '2024-03-08', priority: 'HIGH', evidence: null, order: 3 },
-            { id: 't4', name: 'Revise Description', description: 'Update with new branding', status: 'completed', assignee: 'Sarah', dueDate: '2024-03-09', priority: 'MEDIUM', evidence: null, order: 4 },
-            { id: 't5', name: 'Update Website URL', description: 'Link new website', status: 'completed', assignee: 'John', dueDate: '2024-03-10', priority: 'HIGH', evidence: null, order: 5 },
-            { id: 't6', name: 'Update Phone (if changed)', description: 'New contact number', status: 'completed', assignee: 'John', dueDate: '2024-03-10', priority: 'MEDIUM', evidence: null, order: 6 },
-            { id: 't7', name: 'Post Rebrand Announcement', description: 'Announce the change', status: 'completed', assignee: 'Sarah', dueDate: '2024-03-12', priority: 'MEDIUM', evidence: null, order: 7 },
-            { id: 't8', name: 'Update All Photos', description: 'Replace old branded photos', status: 'completed', assignee: 'Sarah', dueDate: '2024-03-15', priority: 'MEDIUM', evidence: null, order: 8 },
-            { id: 't9', name: 'Check Citation Consistency', description: 'Update major directories', status: 'completed', assignee: 'John', dueDate: '2024-03-18', priority: 'MEDIUM', evidence: null, order: 9 },
-            { id: 't10', name: 'Final QA Check', description: 'Verify all updates are live', status: 'in_progress', assignee: 'John', dueDate: '2024-03-20', priority: 'HIGH', evidence: null, order: 10 },
+            { id: 't1', name: 'Update Business Name', description: 'Change to new brand name', status: 'COMPLETED', assignee: 'John', dueDate: '2024-03-06', priority: 'CRITICAL', evidence: null, order: 1 },
+            { id: 't2', name: 'Upload New Logo', description: 'Replace logo in GBP', status: 'COMPLETED', assignee: 'John', dueDate: '2024-03-07', priority: 'HIGH', evidence: null, order: 2 },
+            { id: 't3', name: 'Update Cover Photo', description: 'New branded cover image', status: 'COMPLETED', assignee: 'Sarah', dueDate: '2024-03-08', priority: 'HIGH', evidence: null, order: 3 },
+            { id: 't4', name: 'Revise Description', description: 'Update with new branding', status: 'COMPLETED', assignee: 'Sarah', dueDate: '2024-03-09', priority: 'MEDIUM', evidence: null, order: 4 },
+            { id: 't5', name: 'Update Website URL', description: 'Link new website', status: 'COMPLETED', assignee: 'John', dueDate: '2024-03-10', priority: 'HIGH', evidence: null, order: 5 },
+            { id: 't6', name: 'Update Phone (if changed)', description: 'New contact number', status: 'COMPLETED', assignee: 'John', dueDate: '2024-03-10', priority: 'MEDIUM', evidence: null, order: 6 },
+            { id: 't7', name: 'Post Rebrand Announcement', description: 'Announce the change', status: 'COMPLETED', assignee: 'Sarah', dueDate: '2024-03-12', priority: 'MEDIUM', evidence: null, order: 7 },
+            { id: 't8', name: 'Update All Photos', description: 'Replace old branded photos', status: 'COMPLETED', assignee: 'Sarah', dueDate: '2024-03-15', priority: 'MEDIUM', evidence: null, order: 8 },
+            { id: 't9', name: 'Check Citation Consistency', description: 'Update major directories', status: 'COMPLETED', assignee: 'John', dueDate: '2024-03-18', priority: 'MEDIUM', evidence: null, order: 9 },
+            { id: 't10', name: 'Final QA Check', description: 'Verify all updates are live', status: 'COMPLETED', assignee: 'John', dueDate: '2024-03-20', priority: 'HIGH', evidence: null, order: 10 },
         ]
     }
 }
@@ -152,9 +157,14 @@ export default function WorkflowDetailPage() {
 
     const [workflow, setWorkflow] = useState<Workflow | null>(null)
     const [loading, setLoading] = useState(true)
+    const [actionLoading, setActionLoading] = useState<string | null>(null)
+    const [error, setError] = useState<string | null>(null)
+    const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
-    useEffect(() => {
-        // Simulate API fetch
+    // Fetch workflow data
+    const fetchWorkflow = useCallback(() => {
+        setLoading(true)
+        // For now, use mock data. In production, this would be an API call
         setTimeout(() => {
             const found = mockWorkflows[workflowId]
             setWorkflow(found || null)
@@ -162,14 +172,138 @@ export default function WorkflowDetailPage() {
         }, 300)
     }, [workflowId])
 
-    const getStatusBadge = (status: string) => {
-        const styles: Record<string, { bg: string; color: string; label: string }> = {
-            completed: { bg: 'rgba(16, 185, 129, 0.1)', color: 'var(--color-success)', label: 'Completed' },
-            in_progress: { bg: 'rgba(99, 102, 241, 0.1)', color: 'var(--color-info)', label: 'In Progress' },
-            pending: { bg: 'rgba(156, 163, 175, 0.1)', color: 'var(--color-text-muted)', label: 'Pending' },
-            blocked: { bg: 'rgba(245, 158, 11, 0.1)', color: 'var(--color-warning)', label: 'Blocked' }
+    useEffect(() => {
+        fetchWorkflow()
+    }, [fetchWorkflow])
+
+    // Workflow action handler
+    const handleWorkflowAction = async (action: 'start' | 'complete' | 'reopen' | 'pause') => {
+        if (!workflow) return
+
+        setActionLoading(action)
+        setError(null)
+
+        try {
+            // For now, simulate with mock data update
+            // In production: const response = await fetch(`/api/workflows/${workflowId}`, { method: 'PATCH', body: JSON.stringify({ action }) })
+
+            await new Promise(resolve => setTimeout(resolve, 500)) // Simulate API delay
+
+            let newStatus: Workflow['status'] = workflow.status
+            let updates: Partial<Workflow> = {}
+
+            switch (action) {
+                case 'start':
+                    if (workflow.status !== 'NOT_STARTED' && workflow.status !== 'PAUSED') {
+                        throw new Error(`Cannot start workflow in ${workflow.status} status`)
+                    }
+                    newStatus = 'IN_PROGRESS'
+                    updates = { startedAt: new Date().toISOString().split('T')[0] }
+                    break
+                case 'complete':
+                    if (workflow.status !== 'IN_PROGRESS') {
+                        throw new Error('Cannot complete workflow. Must be IN_PROGRESS.')
+                    }
+                    const incompleteTasks = workflow.tasks.filter(t => t.status !== 'COMPLETED' && t.status !== 'SKIPPED')
+                    if (incompleteTasks.length > 0) {
+                        throw new Error(`Cannot complete workflow. ${incompleteTasks.length} task(s) still pending.`)
+                    }
+                    newStatus = 'COMPLETED'
+                    updates = { completedAt: new Date().toISOString().split('T')[0], progress: 100 }
+                    break
+                case 'reopen':
+                    if (workflow.status !== 'COMPLETED') {
+                        throw new Error('Cannot reopen. Workflow must be COMPLETED.')
+                    }
+                    newStatus = 'IN_PROGRESS'
+                    updates = { completedAt: null }
+                    break
+                case 'pause':
+                    if (workflow.status !== 'IN_PROGRESS') {
+                        throw new Error('Cannot pause. Workflow must be IN_PROGRESS.')
+                    }
+                    newStatus = 'PAUSED'
+                    break
+            }
+
+            // Update local state
+            setWorkflow({
+                ...workflow,
+                ...updates,
+                status: newStatus
+            })
+
+            setSuccessMessage(`Workflow ${action === 'start' ? 'started' : action === 'complete' ? 'completed' : action === 'reopen' ? 'reopened' : 'paused'} successfully!`)
+            setTimeout(() => setSuccessMessage(null), 3000)
+
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Action failed')
+        } finally {
+            setActionLoading(null)
         }
-        const s = styles[status] || styles.pending
+    }
+
+    // Task action handler
+    const handleTaskAction = async (taskId: string, action: 'start' | 'complete' | 'skip') => {
+        if (!workflow) return
+
+        setActionLoading(taskId)
+
+        try {
+            await new Promise(resolve => setTimeout(resolve, 300)) // Simulate API delay
+
+            const taskIndex = workflow.tasks.findIndex(t => t.id === taskId)
+            if (taskIndex === -1) throw new Error('Task not found')
+
+            const task = workflow.tasks[taskIndex]
+            let newStatus: Task['status'] = task.status
+
+            switch (action) {
+                case 'start':
+                    newStatus = 'IN_PROGRESS'
+                    break
+                case 'complete':
+                    newStatus = 'COMPLETED'
+                    break
+                case 'skip':
+                    newStatus = 'SKIPPED'
+                    break
+            }
+
+            const updatedTasks = [...workflow.tasks]
+            updatedTasks[taskIndex] = { ...task, status: newStatus }
+
+            const completedCount = updatedTasks.filter(t => t.status === 'COMPLETED').length
+            const progress = Math.round((completedCount / updatedTasks.length) * 100)
+
+            setWorkflow({
+                ...workflow,
+                tasks: updatedTasks,
+                completedTasks: completedCount,
+                progress
+            })
+
+            setSuccessMessage(`Task ${action === 'complete' ? 'completed' : action === 'start' ? 'started' : 'skipped'}!`)
+            setTimeout(() => setSuccessMessage(null), 2000)
+
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Task action failed')
+        } finally {
+            setActionLoading(null)
+        }
+    }
+
+    const getStatusBadge = (status: string) => {
+        const statusMap: Record<string, { bg: string; color: string; label: string }> = {
+            'COMPLETED': { bg: 'rgba(16, 185, 129, 0.1)', color: 'var(--color-success)', label: 'Completed' },
+            'IN_PROGRESS': { bg: 'rgba(99, 102, 241, 0.1)', color: 'var(--color-info)', label: 'In Progress' },
+            'PENDING': { bg: 'rgba(156, 163, 175, 0.1)', color: 'var(--color-text-muted)', label: 'Pending' },
+            'NOT_STARTED': { bg: 'rgba(156, 163, 175, 0.1)', color: 'var(--color-text-muted)', label: 'Not Started' },
+            'BLOCKED': { bg: 'rgba(245, 158, 11, 0.1)', color: 'var(--color-warning)', label: 'Blocked' },
+            'PAUSED': { bg: 'rgba(245, 158, 11, 0.1)', color: 'var(--color-warning)', label: 'Paused' },
+            'SKIPPED': { bg: 'rgba(156, 163, 175, 0.1)', color: 'var(--color-text-muted)', label: 'Skipped' },
+        }
+        const s = statusMap[status] || statusMap['PENDING']
         return (
             <span style={{
                 padding: '4px 10px',
@@ -217,6 +351,76 @@ export default function WorkflowDetailPage() {
         return icons[type] || '📋'
     }
 
+    // Get appropriate action buttons based on workflow status
+    const getWorkflowActions = () => {
+        if (!workflow) return null
+
+        const buttons: React.ReactNode[] = []
+
+        switch (workflow.status) {
+            case 'NOT_STARTED':
+                buttons.push(
+                    <button
+                        key="start"
+                        className="btn btn-primary"
+                        onClick={() => handleWorkflowAction('start')}
+                        disabled={actionLoading === 'start'}
+                    >
+                        {actionLoading === 'start' ? '⏳ Starting...' : '▶️ Start Workflow'}
+                    </button>
+                )
+                break
+            case 'IN_PROGRESS':
+                buttons.push(
+                    <button
+                        key="pause"
+                        className="btn btn-secondary"
+                        onClick={() => handleWorkflowAction('pause')}
+                        disabled={actionLoading === 'pause'}
+                    >
+                        {actionLoading === 'pause' ? '⏳...' : '⏸️ Pause'}
+                    </button>
+                )
+                buttons.push(
+                    <button
+                        key="complete"
+                        className="btn btn-primary"
+                        onClick={() => handleWorkflowAction('complete')}
+                        disabled={actionLoading === 'complete'}
+                    >
+                        {actionLoading === 'complete' ? '⏳ Completing...' : '✅ Mark Complete'}
+                    </button>
+                )
+                break
+            case 'PAUSED':
+                buttons.push(
+                    <button
+                        key="resume"
+                        className="btn btn-primary"
+                        onClick={() => handleWorkflowAction('start')}
+                        disabled={actionLoading === 'start'}
+                    >
+                        {actionLoading === 'start' ? '⏳...' : '▶️ Resume'}
+                    </button>
+                )
+                break
+            case 'COMPLETED':
+                buttons.push(
+                    <button
+                        key="reopen"
+                        className="btn btn-secondary"
+                        onClick={() => handleWorkflowAction('reopen')}
+                        disabled={actionLoading === 'reopen'}
+                    >
+                        {actionLoading === 'reopen' ? '⏳...' : '🔄 Reopen'}
+                    </button>
+                )
+                break
+        }
+
+        return buttons
+    }
+
     if (loading) {
         return (
             <>
@@ -254,14 +458,48 @@ export default function WorkflowDetailPage() {
                         <Link href="/workflows" className="btn btn-secondary">
                             ← Back
                         </Link>
-                        <button className="btn btn-primary">
-                            ⚡ Mark Complete
-                        </button>
+                        {getWorkflowActions()}
                     </div>
                 }
             />
 
             <div className="page-content">
+                {/* Success Message */}
+                {successMessage && (
+                    <div style={{
+                        padding: 'var(--spacing-4)',
+                        background: 'rgba(16, 185, 129, 0.1)',
+                        border: '1px solid var(--color-success)',
+                        borderRadius: 'var(--radius-lg)',
+                        color: 'var(--color-success)',
+                        marginBottom: 'var(--spacing-6)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between'
+                    }}>
+                        <span>✅ {successMessage}</span>
+                        <button onClick={() => setSuccessMessage(null)} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer' }}>✕</button>
+                    </div>
+                )}
+
+                {/* Error Message */}
+                {error && (
+                    <div style={{
+                        padding: 'var(--spacing-4)',
+                        background: 'rgba(239, 68, 68, 0.1)',
+                        border: '1px solid var(--color-error)',
+                        borderRadius: 'var(--radius-lg)',
+                        color: 'var(--color-error)',
+                        marginBottom: 'var(--spacing-6)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between'
+                    }}>
+                        <span>❌ {error}</span>
+                        <button onClick={() => setError(null)} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer' }}>✕</button>
+                    </div>
+                )}
+
                 {/* Workflow Summary Card */}
                 <div className="card" style={{ marginBottom: 'var(--spacing-6)' }}>
                     <div style={{
@@ -285,19 +523,19 @@ export default function WorkflowDetailPage() {
                             <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)', marginBottom: '4px' }}>
                                 Type
                             </div>
-                            <span style={{ fontSize: '20px' }}>{getWorkflowIcon(workflow.type)}</span> {workflow.type.replace('_', ' ')}
+                            <span style={{ fontSize: '20px' }}>{getWorkflowIcon(workflow.type)}</span> {workflow.type.replace(/_/g, ' ')}
                         </div>
                         <div>
                             <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)', marginBottom: '4px' }}>
                                 Started
                             </div>
-                            <span>{workflow.startedAt}</span>
+                            <span>{workflow.startedAt || 'Not started'}</span>
                         </div>
                         <div>
                             <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)', marginBottom: '4px' }}>
                                 Due Date
                             </div>
-                            <span>{workflow.dueDate}</span>
+                            <span>{workflow.dueDate || 'No due date'}</span>
                         </div>
                         <div>
                             <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)', marginBottom: '4px' }}>
@@ -314,9 +552,9 @@ export default function WorkflowDetailPage() {
                                 className="progress-fill"
                                 style={{
                                     width: `${workflow.progress}%`,
-                                    background: workflow.status === 'blocked'
+                                    background: workflow.status === 'PAUSED'
                                         ? 'var(--color-warning)'
-                                        : workflow.status === 'completed'
+                                        : workflow.status === 'COMPLETED'
                                             ? 'var(--color-success)'
                                             : 'var(--color-accent-gradient)'
                                 }}
@@ -354,15 +592,15 @@ export default function WorkflowDetailPage() {
                                     alignItems: 'center',
                                     gap: 'var(--spacing-4)',
                                     padding: 'var(--spacing-4)',
-                                    background: task.status === 'completed'
+                                    background: task.status === 'COMPLETED'
                                         ? 'rgba(16, 185, 129, 0.05)'
-                                        : task.status === 'blocked'
+                                        : task.status === 'BLOCKED'
                                             ? 'rgba(245, 158, 11, 0.05)'
                                             : 'var(--color-bg-tertiary)',
                                     borderRadius: 'var(--radius-lg)',
-                                    border: `1px solid ${task.status === 'completed'
+                                    border: `1px solid ${task.status === 'COMPLETED'
                                         ? 'rgba(16, 185, 129, 0.2)'
-                                        : task.status === 'blocked'
+                                        : task.status === 'BLOCKED'
                                             ? 'rgba(245, 158, 11, 0.2)'
                                             : 'var(--color-border)'}`
                                 }}
@@ -372,14 +610,14 @@ export default function WorkflowDetailPage() {
                                     width: '32px',
                                     height: '32px',
                                     borderRadius: 'var(--radius-full)',
-                                    background: task.status === 'completed'
+                                    background: task.status === 'COMPLETED'
                                         ? 'var(--color-success)'
-                                        : task.status === 'in_progress'
+                                        : task.status === 'IN_PROGRESS'
                                             ? 'var(--color-info)'
-                                            : task.status === 'blocked'
+                                            : task.status === 'BLOCKED'
                                                 ? 'var(--color-warning)'
                                                 : 'var(--color-border)',
-                                    color: task.status === 'pending' ? 'var(--color-text-muted)' : 'white',
+                                    color: task.status === 'PENDING' ? 'var(--color-text-muted)' : 'white',
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
@@ -387,7 +625,7 @@ export default function WorkflowDetailPage() {
                                     fontSize: 'var(--font-size-sm)',
                                     flexShrink: 0
                                 }}>
-                                    {task.status === 'completed' ? '✓' : index + 1}
+                                    {task.status === 'COMPLETED' ? '✓' : task.status === 'SKIPPED' ? '—' : index + 1}
                                 </div>
 
                                 {/* Task Info */}
@@ -395,8 +633,8 @@ export default function WorkflowDetailPage() {
                                     <div style={{
                                         fontWeight: 'var(--font-weight-medium)',
                                         marginBottom: '4px',
-                                        textDecoration: task.status === 'completed' ? 'line-through' : 'none',
-                                        opacity: task.status === 'completed' ? 0.7 : 1
+                                        textDecoration: task.status === 'COMPLETED' || task.status === 'SKIPPED' ? 'line-through' : 'none',
+                                        opacity: task.status === 'COMPLETED' || task.status === 'SKIPPED' ? 0.7 : 1
                                     }}>
                                         {task.name}
                                     </div>
@@ -422,14 +660,40 @@ export default function WorkflowDetailPage() {
                                 {/* Status */}
                                 {getStatusBadge(task.status)}
 
-                                {/* Action */}
-                                {task.status !== 'completed' && (
-                                    <button
-                                        className="btn btn-secondary"
-                                        style={{ padding: '6px 12px', fontSize: 'var(--font-size-sm)' }}
-                                    >
-                                        {task.status === 'pending' ? 'Start' : task.status === 'blocked' ? 'Unblock' : 'Complete'}
-                                    </button>
+                                {/* Action Buttons */}
+                                {workflow.status === 'IN_PROGRESS' && task.status !== 'COMPLETED' && task.status !== 'SKIPPED' && (
+                                    <div style={{ display: 'flex', gap: 'var(--spacing-2)' }}>
+                                        {task.status === 'PENDING' && (
+                                            <button
+                                                className="btn btn-secondary"
+                                                style={{ padding: '6px 12px', fontSize: 'var(--font-size-sm)' }}
+                                                onClick={() => handleTaskAction(task.id, 'start')}
+                                                disabled={actionLoading === task.id}
+                                            >
+                                                {actionLoading === task.id ? '...' : 'Start'}
+                                            </button>
+                                        )}
+                                        {task.status === 'IN_PROGRESS' && (
+                                            <button
+                                                className="btn btn-primary"
+                                                style={{ padding: '6px 12px', fontSize: 'var(--font-size-sm)' }}
+                                                onClick={() => handleTaskAction(task.id, 'complete')}
+                                                disabled={actionLoading === task.id}
+                                            >
+                                                {actionLoading === task.id ? '...' : 'Complete'}
+                                            </button>
+                                        )}
+                                        {task.status !== 'BLOCKED' && (
+                                            <button
+                                                className="btn btn-secondary"
+                                                style={{ padding: '6px 12px', fontSize: 'var(--font-size-sm)', opacity: 0.7 }}
+                                                onClick={() => handleTaskAction(task.id, 'skip')}
+                                                disabled={actionLoading === task.id}
+                                            >
+                                                Skip
+                                            </button>
+                                        )}
+                                    </div>
                                 )}
                             </div>
                         ))}

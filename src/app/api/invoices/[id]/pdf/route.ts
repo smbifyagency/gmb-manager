@@ -60,7 +60,7 @@ export async function GET(
             client: {
                 name: invoice.client.name
             },
-            lineItems: invoice.lineItems.map((item): InvoiceLineItemData => ({
+            lineItems: invoice.lineItems.map((item: { description: string; quantity: number; unitPrice: number; total: number }): InvoiceLineItemData => ({
                 description: item.description,
                 quantity: item.quantity,
                 unitPrice: item.unitPrice,

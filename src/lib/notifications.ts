@@ -161,7 +161,7 @@ export async function notifyApprovalRequired(taskInstanceId: string): Promise<vo
                                     team: {
                                         include: {
                                             members: {
-                                                where: { role: { in: ['OWNER', 'ADMIN'] } },
+                                                where: { role: { in: ['SUPER_ADMIN', 'ADMIN'] } },
                                                 include: { user: true }
                                             }
                                         }

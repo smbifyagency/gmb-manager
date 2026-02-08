@@ -91,7 +91,7 @@ const integrations: IntegrationSetting[] = [
 ]
 
 export default function SettingsPage() {
-    const [activeTab, setActiveTab] = useState<'general' | 'notifications' | 'integrations' | 'billing'>('general')
+    const [activeTab, setActiveTab] = useState<'general' | 'notifications' | 'integrations'>('general')
     const [notifications, setNotifications] = useState(notificationSettings)
     const [integrationList, setIntegrationList] = useState(integrations)
     const [successMessage, setSuccessMessage] = useState<string | null>(null)
@@ -127,8 +127,7 @@ export default function SettingsPage() {
     const tabs = [
         { id: 'general', label: 'General', icon: '⚙️' },
         { id: 'notifications', label: 'Notifications', icon: '🔔' },
-        { id: 'integrations', label: 'Integrations', icon: '🔗' },
-        { id: 'billing', label: 'Billing', icon: '💳' }
+        { id: 'integrations', label: 'Integrations', icon: '🔗' }
     ]
 
     return (
@@ -419,111 +418,6 @@ export default function SettingsPage() {
                             </div>
                         )}
 
-                        {/* Billing */}
-                        {activeTab === 'billing' && (
-                            <div>
-                                <h3 style={{
-                                    fontSize: 'var(--font-size-lg)',
-                                    fontWeight: 'var(--font-weight-semibold)',
-                                    marginBottom: 'var(--spacing-6)'
-                                }}>
-                                    Billing & Subscription
-                                </h3>
-
-                                <div style={{
-                                    padding: 'var(--spacing-6)',
-                                    background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(168, 85, 247, 0.1))',
-                                    borderRadius: 'var(--radius-xl)',
-                                    border: '1px solid var(--color-accent-primary)',
-                                    marginBottom: 'var(--spacing-6)'
-                                }}>
-                                    <div style={{
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'flex-start',
-                                        marginBottom: 'var(--spacing-4)'
-                                    }}>
-                                        <div>
-                                            <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)', marginBottom: 'var(--spacing-1)' }}>
-                                                Current Plan
-                                            </div>
-                                            <div style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 'var(--font-weight-bold)' }}>
-                                                Professional
-                                            </div>
-                                        </div>
-                                        <span className="badge badge-primary" style={{ fontSize: 'var(--font-size-sm)' }}>Active</span>
-                                    </div>
-                                    <div style={{ display: 'flex', gap: 'var(--spacing-6)', fontSize: 'var(--font-size-sm)' }}>
-                                        <div>
-                                            <div style={{ color: 'var(--color-text-muted)' }}>Users</div>
-                                            <div style={{ fontWeight: 'var(--font-weight-semibold)' }}>5 / 10</div>
-                                        </div>
-                                        <div>
-                                            <div style={{ color: 'var(--color-text-muted)' }}>Locations</div>
-                                            <div style={{ fontWeight: 'var(--font-weight-semibold)' }}>12 / 50</div>
-                                        </div>
-                                        <div>
-                                            <div style={{ color: 'var(--color-text-muted)' }}>Monthly Price</div>
-                                            <div style={{ fontWeight: 'var(--font-weight-semibold)' }}>$99/mo</div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div style={{
-                                    padding: 'var(--spacing-4)',
-                                    background: 'var(--color-bg-tertiary)',
-                                    borderRadius: 'var(--radius-lg)',
-                                    marginBottom: 'var(--spacing-4)'
-                                }}>
-                                    <div style={{
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'center'
-                                    }}>
-                                        <div>
-                                            <div style={{ fontWeight: 'var(--font-weight-medium)', marginBottom: 'var(--spacing-1)' }}>
-                                                Payment Method
-                                            </div>
-                                            <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)' }}>
-                                                •••• •••• •••• 4242 (Visa)
-                                            </div>
-                                        </div>
-                                        <button className="btn btn-secondary btn-sm">Update</button>
-                                    </div>
-                                </div>
-
-                                <div style={{
-                                    padding: 'var(--spacing-4)',
-                                    background: 'var(--color-bg-tertiary)',
-                                    borderRadius: 'var(--radius-lg)'
-                                }}>
-                                    <div style={{
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'center'
-                                    }}>
-                                        <div>
-                                            <div style={{ fontWeight: 'var(--font-weight-medium)', marginBottom: 'var(--spacing-1)' }}>
-                                                Next Billing Date
-                                            </div>
-                                            <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)' }}>
-                                                March 1, 2024
-                                            </div>
-                                        </div>
-                                        <button className="btn btn-secondary btn-sm">View Invoices</button>
-                                    </div>
-                                </div>
-
-                                <div style={{
-                                    display: 'flex',
-                                    gap: 'var(--spacing-3)',
-                                    marginTop: 'var(--spacing-6)'
-                                }}>
-                                    <button className="btn btn-primary">Upgrade Plan</button>
-                                    <button className="btn btn-secondary">Cancel Subscription</button>
-                                </div>
-                            </div>
-                        )}
                     </div>
                 </div>
             </div>

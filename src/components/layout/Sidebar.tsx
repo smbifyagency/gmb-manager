@@ -78,9 +78,9 @@ export default function Sidebar() {
     // Get role badge color
     const getRoleBadgeColor = (role: string) => {
         switch (role) {
-            case 'OWNER': return 'var(--color-accent-primary)'
+            case 'SUPER_ADMIN': return 'var(--color-accent-primary)'
             case 'ADMIN': return 'var(--color-success)'
-            case 'MEMBER': return 'var(--color-info)'
+            case 'TEAM': return 'var(--color-info)'
             default: return 'var(--color-text-muted)'
         }
     }

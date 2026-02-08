@@ -73,12 +73,12 @@ export function canAccessTeam(context: AuthContext, teamId: string): boolean {
 export function canAccessClient(context: AuthContext, clientId: string): boolean {
     if (context.isSuperAdmin) return true
 
-    // OWNER and ADMIN can access all clients in their team
-    if (context.currentTeam?.role === 'OWNER' || context.currentTeam?.role === 'ADMIN') {
+    // SUPER_ADMIN and ADMIN can access all clients in their team
+    if (context.currentTeam?.role === 'SUPER_ADMIN' || context.currentTeam?.role === 'ADMIN') {
         return true // Assumes client is in their team (should verify in DB)
     }
 
-    // MEMBER and CLIENT can only access assigned clients
+    // TEAM and CLIENT can only access assigned clients
     return context.assignedClients.some(c => c.clientId === clientId)
 }
 
@@ -109,12 +109,12 @@ export function getClientFilter(context: AuthContext) {
         return { id: 'none' }
     }
 
-    // OWNER and ADMIN see all clients in their team
-    if (context.currentTeam.role === 'OWNER' || context.currentTeam.role === 'ADMIN') {
+    // SUPER_ADMIN and ADMIN see all clients in their team
+    if (context.currentTeam.role === 'SUPER_ADMIN' || context.currentTeam.role === 'ADMIN') {
         return { teamId: context.currentTeam.teamId }
     }
 
-    // MEMBER only sees assigned clients
+    // TEAM members only see assigned clients
     const assignedClientIds = context.assignedClients.map(c => c.clientId)
     return {
         teamId: context.currentTeam.teamId,
@@ -144,12 +144,12 @@ export function getWorkflowFilter(context: AuthContext) {
         }
     }
 
-    // OWNER and ADMIN see all workflows in team
-    if (context.currentTeam.role === 'OWNER' || context.currentTeam.role === 'ADMIN') {
+    // SUPER_ADMIN and ADMIN see all workflows in team
+    if (context.currentTeam.role === 'SUPER_ADMIN' || context.currentTeam.role === 'ADMIN') {
         return baseFilter
     }
 
-    // MEMBER and CLIENT only see workflows for assigned clients
+    // TEAM and CLIENT only see workflows for assigned clients
     const assignedClientIds = context.assignedClients.map(c => c.clientId)
     return {
         location: {
@@ -175,12 +175,12 @@ export function getTaskFilter(context: AuthContext) {
 
     const workflowFilter = getWorkflowFilter(context)
 
-    // OWNER and ADMIN see all tasks
-    if (context.currentTeam.role === 'OWNER' || context.currentTeam.role === 'ADMIN') {
+    // SUPER_ADMIN and ADMIN see all tasks
+    if (context.currentTeam.role === 'SUPER_ADMIN' || context.currentTeam.role === 'ADMIN') {
         return { workflowInstance: workflowFilter }
     }
 
-    // MEMBER sees only assigned tasks or tasks for assigned clients
+    // TEAM members see only assigned tasks or tasks for assigned clients
     return {
         OR: [
             { assignedToId: context.user.id },

@@ -84,13 +84,13 @@ export type Permission = typeof PERMISSIONS[keyof typeof PERMISSIONS]
 
 // ============= ROLE TYPES =============
 
-export type TeamRole = 'OWNER' | 'ADMIN' | 'MEMBER'
+export type TeamRole = 'SUPER_ADMIN' | 'ADMIN' | 'TEAM'
 export type SystemRole = 'SUPER_ADMIN' | 'USER' | 'CLIENT'
 
 // ============= ROLE-TO-PERMISSION MAPPING =============
 
-// Team Owner: Full access to everything within their team
-const OWNER_PERMISSIONS: Permission[] = Object.values(PERMISSIONS)
+// Super Admin: Full access to everything within their team - Agency Owner
+const SUPER_ADMIN_PERMISSIONS: Permission[] = Object.values(PERMISSIONS)
 
 // Team Admin: Can manage members, clients, SOPs - cannot delete team
 const ADMIN_PERMISSIONS: Permission[] = [
@@ -131,7 +131,7 @@ const ADMIN_PERMISSIONS: Permission[] = [
 ]
 
 // Team Member: Can view and complete tasks, start workflows
-const MEMBER_PERMISSIONS: Permission[] = [
+const TEAM_PERMISSIONS: Permission[] = [
     PERMISSIONS.CLIENT_VIEW,
     PERMISSIONS.LOCATION_VIEW,
     PERMISSIONS.SOP_VIEW,
@@ -155,9 +155,9 @@ const CLIENT_PERMISSIONS: Permission[] = [
 
 // Role to permissions mapping
 export const ROLE_PERMISSIONS: Record<TeamRole, Permission[]> = {
-    OWNER: OWNER_PERMISSIONS,
+    SUPER_ADMIN: SUPER_ADMIN_PERMISSIONS,
     ADMIN: ADMIN_PERMISSIONS,
-    MEMBER: MEMBER_PERMISSIONS,
+    TEAM: TEAM_PERMISSIONS,
 }
 
 // System role permissions for CLIENT users
@@ -189,12 +189,12 @@ export function canAccessClient(
     userAssignedClientIds: string[],
     targetClientId: string
 ): boolean {
-    // OWNER and ADMIN can access all clients in their team
-    if (userRole === 'OWNER' || userRole === 'ADMIN') {
+    // SUPER_ADMIN and ADMIN can access all clients in their team
+    if (userRole === 'SUPER_ADMIN' || userRole === 'ADMIN') {
         return true
     }
 
-    // MEMBER can only access assigned clients
+    // TEAM members can only access assigned clients
     return userAssignedClientIds.includes(targetClientId)
 }
 
@@ -202,7 +202,7 @@ export function canAccessClient(
  * Check if user can perform action requiring owner approval
  */
 export function canApprove(role: TeamRole): boolean {
-    return role === 'OWNER' || role === 'ADMIN'
+    return role === 'SUPER_ADMIN' || role === 'ADMIN'
 }
 
 // ============= PERMISSION CONSTANTS FOR UI =============
@@ -260,13 +260,13 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
 }
 
 export const ROLE_LABELS: Record<TeamRole, string> = {
-    OWNER: 'Team Owner',
-    ADMIN: 'Team Admin',
-    MEMBER: 'Team Member',
+    SUPER_ADMIN: 'Super Admin',
+    ADMIN: 'Admin',
+    TEAM: 'Team Member',
 }
 
 export const ROLE_DESCRIPTIONS: Record<TeamRole, string> = {
-    OWNER: 'Full control over team settings, members, clients, and all data',
+    SUPER_ADMIN: 'Full control over team settings, members, clients, and all data',
     ADMIN: 'Can manage clients, SOPs, workflows, and assign tasks to members',
-    MEMBER: 'Can view assigned clients and complete assigned tasks',
+    TEAM: 'Can view assigned clients and complete assigned tasks',
 }

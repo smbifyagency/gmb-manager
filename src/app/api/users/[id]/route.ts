@@ -64,7 +64,7 @@ export async function GET(
         if (user.useCustomPermissions) {
             effectivePermissions = customPermissions
         } else {
-            const roleHierarchy = ['OWNER', 'ADMIN', 'MEMBER']
+            const roleHierarchy = ['SUPER_ADMIN', 'ADMIN', 'TEAM']
             for (const role of roleHierarchy) {
                 if (user.teamMemberships.some(m => m.role === role)) {
                     effectivePermissions = ROLE_PERMISSIONS[role as keyof typeof ROLE_PERMISSIONS] || []

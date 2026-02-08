@@ -60,7 +60,7 @@ export function getEffectivePermissions(
 
     // If user has any team membership, use highest role
     if (user.teamMemberships.length > 0) {
-        const roleHierarchy: TeamRole[] = ['OWNER', 'ADMIN', 'MEMBER']
+        const roleHierarchy: TeamRole[] = ['SUPER_ADMIN', 'ADMIN', 'TEAM']
         for (const role of roleHierarchy) {
             if (user.teamMemberships.some(m => m.role === role)) {
                 return ROLE_PERMISSIONS[role]
@@ -110,7 +110,7 @@ export function canChangeUserRole(
         return false
     }
 
-    return membership.role === 'OWNER' || membership.role === 'ADMIN'
+    return membership.role === 'SUPER_ADMIN' || membership.role === 'ADMIN'
 }
 
 /**
@@ -132,7 +132,7 @@ export function canEditUserPermissions(
         return false
     }
 
-    return membership.role === 'OWNER' || membership.role === 'ADMIN'
+    return membership.role === 'SUPER_ADMIN' || membership.role === 'ADMIN'
 }
 
 /**
@@ -144,9 +144,9 @@ export function isValidRoleChange(
     newRole: TeamRole
 ): boolean {
     const roleHierarchy: Record<TeamRole, number> = {
-        OWNER: 3,
+        SUPER_ADMIN: 3,
         ADMIN: 2,
-        MEMBER: 1,
+        TEAM: 1,
     }
 
     // Actor can only assign roles equal or below their level
@@ -209,7 +209,7 @@ export async function getUserContext(userId: string): Promise<UserContext | null
 export function isTeamAdmin(user: UserContext): boolean {
     if (user.systemRole === 'SUPER_ADMIN') return true
     return user.teamMemberships.some(m =>
-        m.role === 'OWNER' || m.role === 'ADMIN'
+        m.role === 'SUPER_ADMIN' || m.role === 'ADMIN'
     )
 }
 
@@ -219,16 +219,16 @@ export function isTeamAdmin(user: UserContext): boolean {
 export function isAdminOfTeam(user: UserContext, teamId: string): boolean {
     if (user.systemRole === 'SUPER_ADMIN') return true
     const membership = user.teamMemberships.find(m => m.teamId === teamId)
-    return membership?.role === 'OWNER' || membership?.role === 'ADMIN'
+    return membership?.role === 'SUPER_ADMIN' || membership?.role === 'ADMIN'
 }
 
 /**
  * Get user's highest role across all teams
  */
 export function getHighestRole(user: UserContext): TeamRole | null {
-    if (user.systemRole === 'SUPER_ADMIN') return 'OWNER'
+    if (user.systemRole === 'SUPER_ADMIN') return 'SUPER_ADMIN'
 
-    const roleHierarchy: TeamRole[] = ['OWNER', 'ADMIN', 'MEMBER']
+    const roleHierarchy: TeamRole[] = ['SUPER_ADMIN', 'ADMIN', 'TEAM']
     for (const role of roleHierarchy) {
         if (user.teamMemberships.some(m => m.role === role)) {
             return role

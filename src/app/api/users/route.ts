@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
             password,
             name,
             teamId,
-            teamRole = 'MEMBER',
+            teamRole = 'TEAM',
             systemRole = 'USER',
             customPermissions = [],
             useCustomPermissions = false,
@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Validate teamRole
-        const validRoles = ['OWNER', 'ADMIN', 'MEMBER']
+        const validRoles = ['SUPER_ADMIN', 'ADMIN', 'TEAM']
         if (!validRoles.includes(teamRole)) {
             return NextResponse.json(
                 { error: 'Invalid team role' },

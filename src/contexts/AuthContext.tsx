@@ -97,7 +97,7 @@ const mockUser: User = {
 const mockTeams: TeamMembership[] = [
     {
         team: { id: 'team-1', name: 'My SEO Agency', slug: 'my-seo-agency' },
-        role: 'OWNER'
+        role: 'SUPER_ADMIN'
     },
     {
         team: { id: 'team-2', name: 'Partner Agency', slug: 'partner-agency' },
@@ -136,9 +136,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const currentTeamId = currentTeam?.team.id || null
     const currentTeamRole = currentTeam?.role || null
 
-    const isTeamOwner = currentTeamRole === 'OWNER'
+    const isTeamOwner = currentTeamRole === 'SUPER_ADMIN'
     const isTeamAdmin = currentTeamRole === 'ADMIN'
-    const isTeamMember = currentTeamRole === 'MEMBER'
+    const isTeamMember = currentTeamRole === 'TEAM'
 
     // Get permissions based on current context
     const permissions = useMemo<Permission[]>(() => {

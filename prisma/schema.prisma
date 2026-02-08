@@ -33,7 +33,7 @@ model TeamMember {
   id        String     @id @default(cuid())
   teamId    String
   userId    String
-  role      TeamRole   @default(MEMBER)
+  role      TeamRole   @default(TEAM)
   createdAt DateTime   @default(now())
 
   team      Team       @relation(fields: [teamId], references: [id], onDelete: Cascade)
@@ -43,9 +43,9 @@ model TeamMember {
 }
 
 enum TeamRole {
-  OWNER    // Full team control (Agency Owner)
-  ADMIN    // Can manage members, clients (SEO Lead)
-  MEMBER   // Can work on assigned tasks (Junior SEO, VA)
+  SUPER_ADMIN  // Full control - Agency Owner
+  ADMIN        // Can manage members, clients (SEO Lead)
+  TEAM         // Can work on assigned tasks (Junior SEO, VA)
 }
 
 model TeamSettings {
